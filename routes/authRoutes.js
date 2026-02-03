@@ -1,5 +1,5 @@
 const express = require("express");
-const { register, login } = require("../controllers/authController");
+const { register, login, verifyEmail } = require("../controllers/authController");
 const router = express.Router();
 
 // ------------------------
@@ -15,6 +15,11 @@ router.post("/register", register);
 // @desc    Login user
 // @access  Public
 router.post("/login", login);
+
+// @route   GET /api/auth/verify/:token
+// @desc    Verify user email
+// @access  Public
+router.get("/verify/:token", verifyEmail);
 
 // ------------------------
 // Protected Routes Example

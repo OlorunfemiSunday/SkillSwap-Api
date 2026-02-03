@@ -25,20 +25,28 @@ const userSchema = new mongoose.Schema(
       required: true,
       minlength: 6,
     },
+    isVerified: {
+      type: Boolean,
+      default: false,
+    },
+    verificationToken: {
+      type: String,
+    },
   },
   { timestamps: true }
 );
 
 // Pre-save hook to hash password before saving
-userSchema.pre("save", async function () {
-  if (!this.isModified("password")) return; // Only hash if password is new/changed
+userSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) return next();
 
   try {
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
+    next();
   } catch (err) {
     console.error("Password hashing error:", err);
-    throw err; // propagate error to controller
+    next(err);
   }
 });
 
