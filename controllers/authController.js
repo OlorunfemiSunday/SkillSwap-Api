@@ -1,5 +1,7 @@
 const User = require("../models/User");
 const generateToken = require("../utils/generateToken");
+const sendEmail = require("../utils/sendEmail");
+const crypto = require("crypto");
 
 // REGISTER
 const register = async (req, res) => {
@@ -17,22 +19,64 @@ const register = async (req, res) => {
       return res.status(400).json({ message: "Email already registered" });
     }
 
+    // Generate Verification Token
+    const verificationToken = crypto.randomBytes(32).toString("hex");
+
     // Create user (password hashing is done in model pre-save hook)
-    const user = await User.create({ name, email, phone, password });
+    const user = await User.create({ 
+      name, 
+      email, 
+      phone, 
+      password, 
+      verificationToken 
+    });
+
+    // Send Verification Email
+    const verificationUrl = `https://skillswap-api-1upf.onrender.com/api/auth/verify/${verificationToken}`;
+    const message = `
+      <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #eee; padding: 20px;">
+        <h2 style="color: #172554;">Verify Your Email</h2>
+        <p>Hello ${name},</p>
+        <p>Thank you for signing up for Skill Swap! Please click the button below to verify your account.</p>
+        <a href="${verificationUrl}" style="display: inline-block; background: #172554; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; margin: 20px 0;">Verify Email</a>
+        <p>If the button doesn't work, copy and paste this link into your browser:</p>
+        <p style="word-break: break-all; color: #666;">${verificationUrl}</p>
+      </div>
+    `;
+
+    await sendEmail(user.email, "Verify your Skill Swap Account", message);
 
     res.status(201).json({
-      message: "User registered successfully",
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-      },
-      token: generateToken(user._id),
+      message: "Registration successful! Please check your email to verify your account.",
     });
   } catch (err) {
-    console.error(err); // log error for debugging
+    console.error(err);
     res.status(500).json({ message: "Server error" });
+  }
+};
+
+// VERIFY EMAIL
+const verifyEmail = async (req, res) => {
+  try {
+    const user = await User.findOne({ verificationToken: req.params.token });
+
+    if (!user) {
+      return res.status(400).send("<h1>Invalid or expired link</h1>");
+    }
+
+    user.isVerified = true;
+    user.verificationToken = undefined;
+    await user.save();
+
+    res.send(`
+      <div style="text-align: center; margin-top: 50px; font-family: sans-serif;">
+        <h1 style="color: #172554;">Email Verified!</h1>
+        <p>Your account has been successfully verified. You can now log in.</p>
+      </div>
+    `);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Server error during verification");
   }
 };
 
@@ -41,18 +85,20 @@ const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Validate input
     if (!email || !password) {
       return res.status(400).json({ message: "Email and password are required" });
     }
 
-    // Find user
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
 
-    // Check password
+    // Check if user is verified
+    if (!user.isVerified) {
+      return res.status(401).json({ message: "Please verify your email address before logging in." });
+    }
+
     const isMatch = await user.matchPassword(password);
     if (!isMatch) {
       return res.status(401).json({ message: "Invalid credentials" });
@@ -69,9 +115,9 @@ const login = async (req, res) => {
       token: generateToken(user._id),
     });
   } catch (err) {
-    console.error(err); // log error for debugging
+    console.error(err);
     res.status(500).json({ message: "Server error" });
   }
 };
 
-module.exports = { register, login };
+module.exports = { register, login, verifyEmail };
