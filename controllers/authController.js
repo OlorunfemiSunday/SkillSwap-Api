@@ -23,34 +23,42 @@ const register = async (req, res) => {
     const verificationToken = crypto.randomBytes(32).toString("hex");
 
     // Create user (password hashing is done in model pre-save hook)
-    const user = await User.create({ 
-      name, 
-      email, 
-      phone, 
-      password, 
-      verificationToken 
+    const user = await User.create({
+      name,
+      email,
+      phone,
+      password,
+      verificationToken,
     });
 
-    // Send Verification Email
-    const verificationUrl = `https://skillswap-api-1upf.onrender.com/api/auth/verify/${verificationToken}`;
-    const message = `
-      <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #eee; padding: 20px;">
-        <h2 style="color: #172554;">Verify Your Email</h2>
-        <p>Hello ${name},</p>
-        <p>Thank you for signing up for Skill Swap! Please click the button below to verify your account.</p>
-        <a href="${verificationUrl}" style="display: inline-block; background: #172554; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; margin: 20px 0;">Verify Email</a>
-        <p>If the button doesn't work, copy and paste this link into your browser:</p>
-        <p style="word-break: break-all; color: #666;">${verificationUrl}</p>
-      </div>
-    `;
+    // Send Verification Email (Wrapped in its own try-catch so it doesn't crash the whole process)
+    try {
+      const verificationUrl = `https://skillswap-api-1upf.onrender.com/api/auth/verify/${verificationToken}`;
+      const message = `
+        <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #eee; padding: 20px;">
+          <h2 style="color: #172554;">Verify Your Email</h2>
+          <p>Hello ${name},</p>
+          <p>Thank you for signing up for Skill Swap! Please click the button below to verify your account.</p>
+          <a href="${verificationUrl}" style="display: inline-block; background: #172554; color: white; padding: 12px 25px; text-decoration: none; border-radius: 5px; margin: 20px 0;">Verify Email</a>
+          <p>If the button doesn't work, copy and paste this link into your browser:</p>
+          <p style="word-break: break-all; color: #666;">${verificationUrl}</p>
+        </div>
+      `;
 
-    await sendEmail(user.email, "Verify your Skill Swap Account", message);
+      await sendEmail(user.email, "Verify your Skill Swap Account", message);
+      console.log("Verification email sent successfully to:", user.email);
+    } catch (emailErr) {
+      // This will show up in your Render Logs so you can see why it failed
+      console.error("EMAIL SENDING FAILED:", emailErr.message);
+    }
 
+    // Always return success if the user was successfully created in the database
     res.status(201).json({
-      message: "Registration successful! Please check your email to verify your account.",
+      message:
+        "Registration successful! Please check your email to verify your account.",
     });
   } catch (err) {
-    console.error(err);
+    console.error("REGISTRATION ERROR:", err);
     res.status(500).json({ message: "Server error" });
   }
 };
@@ -86,7 +94,9 @@ const login = async (req, res) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ message: "Email and password are required" });
+      return res
+        .status(400)
+        .json({ message: "Email and password are required" });
     }
 
     const user = await User.findOne({ email });
@@ -96,7 +106,11 @@ const login = async (req, res) => {
 
     // Check if user is verified
     if (!user.isVerified) {
-      return res.status(401).json({ message: "Please verify your email address before logging in." });
+      return res
+        .status(401)
+        .json({
+          message: "Please verify your email address before logging in.",
+        });
     }
 
     const isMatch = await user.matchPassword(password);
