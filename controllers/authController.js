@@ -22,7 +22,7 @@ const register = async (req, res) => {
     // Generate Verification Token
     const verificationToken = crypto.randomBytes(32).toString("hex");
 
-    // Create user (password hashing is done in model pre-save hook)
+    // Create user
     const user = await User.create({
       name,
       email,
@@ -31,7 +31,12 @@ const register = async (req, res) => {
       verificationToken,
     });
 
-    // Send Verification Email (Wrapped in its own try-catch so it doesn't crash the whole process)
+    // Send the response IMMEDIATELY so Postman doesn't hang
+    res.status(201).json({
+      message: "Registration successful! Please check your email to verify your account.",
+    });
+
+    // Handle email sending in the background (remove 'await' or keep it inside this separate block)
     try {
       const verificationUrl = `https://skillswap-api-1upf.onrender.com/api/auth/verify/${verificationToken}`;
       const message = `
@@ -45,93 +50,23 @@ const register = async (req, res) => {
         </div>
       `;
 
+      // We still await here, but since the response was already sent above, 
+      // the user doesn't have to wait for the SMTP server to respond.
       await sendEmail(user.email, "Verify your Skill Swap Account", message);
       console.log("Verification email sent successfully to:", user.email);
     } catch (emailErr) {
-      // This will show up in your Render Logs so you can see why it failed
       console.error("EMAIL SENDING FAILED:", emailErr.message);
+      // We don't need to send a res.status here because it was already sent above
     }
 
-    // Always return success if the user was successfully created in the database
-    res.status(201).json({
-      message:
-        "Registration successful! Please check your email to verify your account.",
-    });
   } catch (err) {
     console.error("REGISTRATION ERROR:", err);
-    res.status(500).json({ message: "Server error" });
+    // Only send error if the response hasn't been sent yet
+    if (!res.headersSent) {
+      res.status(500).json({ message: "Server error" });
+    }
   }
 };
 
-// VERIFY EMAIL
-const verifyEmail = async (req, res) => {
-  try {
-    const user = await User.findOne({ verificationToken: req.params.token });
-
-    if (!user) {
-      return res.status(400).send("<h1>Invalid or expired link</h1>");
-    }
-
-    user.isVerified = true;
-    user.verificationToken = undefined;
-    await user.save();
-
-    res.send(`
-      <div style="text-align: center; margin-top: 50px; font-family: sans-serif;">
-        <h1 style="color: #172554;">Email Verified!</h1>
-        <p>Your account has been successfully verified. You can now log in.</p>
-      </div>
-    `);
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Server error during verification");
-  }
-};
-
-// LOGIN
-const login = async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      return res
-        .status(400)
-        .json({ message: "Email and password are required" });
-    }
-
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(401).json({ message: "Invalid credentials" });
-    }
-
-    // Check if user is verified
-    if (!user.isVerified) {
-      return res
-        .status(401)
-        .json({
-          message: "Please verify your email address before logging in.",
-        });
-    }
-
-    const isMatch = await user.matchPassword(password);
-    if (!isMatch) {
-      return res.status(401).json({ message: "Invalid credentials" });
-    }
-
-    res.status(200).json({
-      message: "Login successful",
-      user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        phone: user.phone,
-      },
-      token: generateToken(user._id),
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ message: "Server error" });
-  }
-};
 
 module.exports = { register, login, verifyEmail };
