@@ -4,17 +4,21 @@ const sendEmail = async (email, subject, htmlContent) => {
   try {
     const transporter = nodemailer.createTransport({
       host: "smtp.gmail.com",
-      port: 465,
-      secure: true, // Use SSL
+      port: 587,
+      secure: false, // Must be false for port 587
       auth: {
         user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS, // Ensure spaces are removed in Render Env
+        pass: process.env.EMAIL_PASS,
       },
-      // This helps bypass some network restrictions on cloud hosts
       tls: {
-        rejectUnauthorized: false
+        // This is critical for cloud providers like Render
+        rejectUnauthorized: false,
+        minVersion: "TLSv1.2"
       }
     });
+
+    // Verify the connection configuration before sending
+    await transporter.verify();
 
     await transporter.sendMail({
       from: `"Skill Swap" <${process.env.EMAIL_USER}>`,
@@ -25,9 +29,7 @@ const sendEmail = async (email, subject, htmlContent) => {
     
     console.log("Email sent successfully to:", email);
   } catch (error) {
-    console.error("Email sending failed:", error);
-    // We throw the error so the controller knows it failed, 
-    // but your updated controller will handle it gracefully.
+    console.error("NODEMAILER ERROR:", error.message);
     throw error; 
   }
 };
