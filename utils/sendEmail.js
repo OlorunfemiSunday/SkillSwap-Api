@@ -4,20 +4,22 @@ const sendEmail = async (email, subject, htmlContent) => {
   try {
     const transporter = nodemailer.createTransport({
       host: "smtp.gmail.com",
-      port: 587,
-      secure: false, // Must be false for port 587
+      port: 465,
+      secure: true, // Use SSL for port 465
       auth: {
         user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
       },
+      // Increased timeouts to prevent ETIMEDOUT on Render's network
+      connectionTimeout: 15000, 
+      greetingTimeout: 15000,
+      socketTimeout: 15000,
       tls: {
-        // This is critical for cloud providers like Render
         rejectUnauthorized: false,
-        minVersion: "TLSv1.2"
       }
     });
 
-    // Verify the connection configuration before sending
+    // Verify connection before sending
     await transporter.verify();
 
     await transporter.sendMail({
@@ -30,6 +32,7 @@ const sendEmail = async (email, subject, htmlContent) => {
     console.log("Email sent successfully to:", email);
   } catch (error) {
     console.error("NODEMAILER ERROR:", error.message);
+    // Throw error so the controller can catch it, but the user creation still succeeds
     throw error; 
   }
 };
