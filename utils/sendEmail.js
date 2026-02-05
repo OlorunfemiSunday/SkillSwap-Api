@@ -3,11 +3,17 @@ const nodemailer = require("nodemailer");
 const sendEmail = async (email, subject, htmlContent) => {
   try {
     const transporter = nodemailer.createTransport({
-      service: "gmail",
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true, // Use SSL
       auth: {
         user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS, // Your 16-character Google App Password
+        pass: process.env.EMAIL_PASS, // Ensure spaces are removed in Render Env
       },
+      // This helps bypass some network restrictions on cloud hosts
+      tls: {
+        rejectUnauthorized: false
+      }
     });
 
     await transporter.sendMail({
@@ -16,10 +22,13 @@ const sendEmail = async (email, subject, htmlContent) => {
       subject: subject,
       html: htmlContent,
     });
+    
     console.log("Email sent successfully to:", email);
   } catch (error) {
     console.error("Email sending failed:", error);
-    throw new Error("Email could not be sent");
+    // We throw the error so the controller knows it failed, 
+    // but your updated controller will handle it gracefully.
+    throw error; 
   }
 };
 
