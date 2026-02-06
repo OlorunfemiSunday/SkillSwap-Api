@@ -73,7 +73,7 @@ const verifyEmail = async (req, res) => {
     user.verificationToken = undefined;
     await user.save();
 
-    res.redirect("https://https://skillswap-website.onrender.com/emailverified.html");
+    res.redirect("https://skillswap-website.onrender.com/emailverified.html");
 ;
   } catch (err) {
     console.error(err);
