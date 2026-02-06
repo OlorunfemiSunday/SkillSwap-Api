@@ -73,12 +73,8 @@ const verifyEmail = async (req, res) => {
     user.verificationToken = undefined;
     await user.save();
 
-    res.send(`
-      <div style="text-align: center; margin-top: 50px; font-family: sans-serif;">
-        <h1 style="color: #172554;">Email Verified!</h1>
-        <p>Your account has been successfully verified. You can now log in.</p>
-      </div>
-    `);
+    res.redirect("https://https://skillswap-website.onrender.com/emailverified.html");
+;
   } catch (err) {
     console.error(err);
     res.status(500).send("Server error during verification");
