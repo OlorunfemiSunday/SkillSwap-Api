@@ -29,7 +29,8 @@ const register = async (req, res) => {
 
     // Send success response immediately
     res.status(201).json({
-      message: "Registration successful! Please check your email to verify your account.",
+      message:
+        "Registration successful! Please check your email to verify your account.",
     });
 
     // Send email in background
@@ -51,7 +52,6 @@ const register = async (req, res) => {
     } catch (emailErr) {
       console.error("EMAIL SENDING FAILED:", emailErr.message);
     }
-
   } catch (err) {
     console.error("REGISTRATION ERROR:", err);
     if (!res.headersSent) {
@@ -74,7 +74,6 @@ const verifyEmail = async (req, res) => {
     await user.save();
 
     res.redirect("https://skillswap-website.onrender.com/emailverified.html");
-;
   } catch (err) {
     console.error(err);
     res.status(500).send("Server error during verification");
@@ -87,10 +86,12 @@ const login = async (req, res) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.status(400).json({ message: "Email and password are required" });
+      return res
+        .status(400)
+        .json({ message: "Email and password are required" });
     }
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email }).select("+password");
     if (!user) {
       return res.status(401).json({ message: "Invalid credentials" });
     }
