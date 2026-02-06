@@ -29,14 +29,12 @@ const register = async (req, res) => {
 
     // Send success response immediately
     res.status(201).json({
-      message:
-        "Registration successful! Please check your email to verify your account.",
+      message: "Registration successful! Please check your email to verify your account.",
     });
 
     // Send email in background
     try {
-      const verificationUrl = `${process.env.SERVER_URL}/api/auth/verify/${verificationToken}`;
-
+      const verificationUrl = `https://skillswap-api-1upf.onrender.com/api/auth/verify/${verificationToken}`;
       const message = `
         <div style="font-family: sans-serif; max-width: 600px; margin: auto; border: 1px solid #eee; padding: 20px;">
           <h2 style="color: #172554;">Verify Your Email</h2>
@@ -53,6 +51,7 @@ const register = async (req, res) => {
     } catch (emailErr) {
       console.error("EMAIL SENDING FAILED:", emailErr.message);
     }
+
   } catch (err) {
     console.error("REGISTRATION ERROR:", err);
     if (!res.headersSent) {
@@ -75,6 +74,7 @@ const verifyEmail = async (req, res) => {
     await user.save();
 
     res.redirect("https://skillswap-website.onrender.com/emailverified.html");
+;
   } catch (err) {
     console.error(err);
     res.status(500).send("Server error during verification");
@@ -87,9 +87,7 @@ const login = async (req, res) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res
-        .status(400)
-        .json({ message: "Email and password are required" });
+      return res.status(400).json({ message: "Email and password are required" });
     }
 
     const user = await User.findOne({ email });
