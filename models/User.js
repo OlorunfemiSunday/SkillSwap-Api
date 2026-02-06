@@ -96,17 +96,13 @@ const userSchema = new mongoose.Schema(
    HASH PASSWORD
 ====================== */
 
-userSchema.pre("save", async function (next) {
+// Fixed: Removed 'next' parameter and calls to fix "next is not a function" error
+userSchema.pre("save", async function () {
   // only hash if password changed
-  if (!this.isModified("password")) return next();
+  if (!this.isModified("password")) return;
 
-  try {
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-  } catch (err) {
-    next(err);
-  }
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
 });
 
 /* ======================
